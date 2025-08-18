@@ -1,5 +1,5 @@
 # PowerShell Script: Generate Test Folder Structure
-# Save as Generate-TestFolders.ps1
+# Usage : Generate-TestFolders.ps1 -RootPath "R:\"
 
 param(
     [string]$RootPath = "C:\TestFolders"
@@ -36,3 +36,4 @@ for ($i = 1; $i -le 10; $i++) {
 }
 
 Write-Host "Folder structure created successfully!"
+
