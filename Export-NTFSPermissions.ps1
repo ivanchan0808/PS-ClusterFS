@@ -1,5 +1,5 @@
 # PowerShell Script: Export NTFS Permissions with icacls
-# Save this as Export-NTFSPermissions.ps1
+# Usage : Export-NTFSPermissions.ps1 -RootFolder "R:\Test"
 
 param(
     [Parameter(Mandatory = $true)]
@@ -22,3 +22,4 @@ try {
 catch {
     Write-Host "Error occurred: $_"
 }
+
