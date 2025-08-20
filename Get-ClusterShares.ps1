@@ -22,6 +22,8 @@ function Write-Log {
     $Message | Out-File -FilePath $outputFile -Append -Encoding UTF8
 }
 
+$runTime = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+Write-Host "---------- Script Started at: $RunTime ----------"
 # Check if required modules are loaded
 if (-not (Get-Module -Name FailoverClusters, SmbShare)) {
     Write-Log "Required modules (FailoverClusters and/or SmbShare) are not available. Please ensure they are installed."
@@ -30,11 +32,11 @@ if (-not (Get-Module -Name FailoverClusters, SmbShare)) {
 
 # Get the current cluster
 try {
-    Write-Log "Executing command: Get-Cluster"
+    Write-Log "---------- Executing command: Get-Cluster ----------"
     $cluster = Get-Cluster -ErrorAction Stop
     Write-Log "Cluster Name: $($cluster.Name)"
     Write-Log "Cluster Nodes: $((Get-ClusterNode | Select-Object -ExpandProperty Name) -join ', ')"
-    Write-Log "-----------------------------------"
+    Write-Log "---------- End of Executing command: Get-Cluster ----------"
 } catch {
     Write-Log "Unable to retrieve cluster information: $($_.Exception.ToString())"
     exit
@@ -42,21 +44,21 @@ try {
 
 # List all available SMB shares for debugging
 try {
-    Write-Log "Executing command: Get-SmbShare"
+    Write-Log "---------- Executing command: Get-SmbShare ----------"
     $allShares = Get-SmbShare -ErrorAction Stop
     Write-Log "All Available SMB Shares on the System (Debug):"
     Write-Log "Number of All Shares Found: $($allShares.Count)"
     foreach ($share in $allShares) {
         Write-Log "  Share Name: $($share.Name), ScopeName: $($share.ScopeName), Path: $($share.Path)"
     }
-    Write-Log "-----------------------------------"
+    Write-Log "---------- End of Executing command: Get-SmbShare ----------"
 } catch {
     Write-Log "Unable to retrieve all SMB shares: $($_.Exception.ToString())"
 }
 
 # Get all file server resources (including Scale-Out File Servers)
 try {
-    Write-Log "Executing command: Get-ClusterResource | Where-Object { \$_.ResourceType.Name -in @('File Server', 'Scale Out File Server') }"
+    Write-Log "---------- Executing command: Get-ClusterResource | Where-Object { \$_.ResourceType.Name -in @('File Server', 'Scale Out File Server') } ----------"
     $fileServers = Get-ClusterResource | Where-Object { $_.ResourceType.Name -in @("File Server", "Scale Out File Server") }
     Write-Log "Number of File Server Resources Found: $($fileServers.Count)"
 } catch {
@@ -89,6 +91,7 @@ if ($fileServers.Count -eq 0) {
                 foreach ($param in $params) {
                     Write-Log "  $($param.Name): $($param.Value)"
                 }
+            Write-Log "---------- End of Executing commnd: Get-ClusterResource ----------"
             } else {
                 Write-Log "  No parameters found for this resource."
             }
@@ -107,7 +110,7 @@ if ($fileServers.Count -eq 0) {
 
         # Get dependent resources (e.g., disks or IPs)
         try {
-            Write-Log "Executing command: Get-ClusterResourceDependency -Resource '$cleanFsName'"
+            Write-Log "---------- Executing command: Get-ClusterResourceDependency -Resource '$cleanFsName' ----------"
             $dependencies = Get-ClusterResourceDependency -Resource $cleanFsName -ErrorAction Stop
             if ($dependencies -and $dependencies.DependencyExpression) {
                 Write-Log "Dependencies:"
@@ -121,6 +124,7 @@ if ($fileServers.Count -eq 0) {
                         Write-Log "  $depName (Unable to retrieve resource details)"
                     }
                 }
+            Write-Log "---------- End of Executing command: Get-ClusterResourceDependency -Resource '$cleanFsName' ---------- "
             } else {
                 Write-Log "  No dependencies found for this resource."
             }
@@ -128,16 +132,17 @@ if ($fileServers.Count -eq 0) {
             Write-Log "  Unable to retrieve dependencies: $($_.Exception.ToString())"
         }
 
-        # Try unique ScopeName values, prioritizing 'aska_share'
-        $scopeNames = @($fsName, $cluster.Name, $fs.OwnerGroup.Name, $fs.OwnerNode.Name) | Select-Object -Unique
+        # Try unique ScopeName values
+	# $scopeNames = @($fsName, $cluster.Name, $fs.OwnerGroup.Name, $fs.OwnerNode.Name) | Select-Object -Unique
+	# Removed cluster, node and fsname.
+        $scopeNames = @($fsName.ToUpper(), $cluster.Name.ToUpper(), $fs.OwnerGroup.Name.ToUpper())   | Select-Object -Unique
         Write-Log "Attempting to retrieve SMB shares for ScopeNames: $($scopeNames -join ', ')"
         foreach ($scope in $scopeNames) {
             try {
-                Write-Log "Executing command: Get-SmbShare -ScopeName '$scope'"
                 $shares = Get-SmbShare -ScopeName $scope -ErrorAction Stop
                 Write-Log "Number of Shares Found for Scope '$scope': $($shares.Count)"
                 if ($shares) {
-                    Write-Log "Shares for Scope '$scope':"
+                    Write-Log "---------- Shares for Scope '$scope': ----------"
                     foreach ($share in $shares) {
                         try {
                             Write-Log "  Processing Share: $($share.Name)"
@@ -160,7 +165,7 @@ if ($fileServers.Count -eq 0) {
                                     foreach ($entry in $accessEntries) {
                                         Write-Log "      Account: $($entry.AccountName), Access Right: $($entry.AccessRight), Access Control Type: $($entry.AccessControlType)"
                                     }
-                                } else {
+                                  } else {
                                     Write-Log "    No SMB permissions found or access error."
                                 }
                             } catch {
@@ -172,15 +177,19 @@ if ($fileServers.Count -eq 0) {
                             continue
                         }
                     }
+                Write-Log "---------- End of Shares for Scope '$scope' ----------"
                 } else {
                     Write-Log "No shares found for Scope '$scope'."
                 }
+
             } catch {
                 $errorMessage = if ($_.Exception.Message) { $_.Exception.Message } else { "Unknown error: $($_.Exception.ToString())" }
                 Write-Log "Unable to retrieve SMB shares for scope '$scope': $errorMessage"
+                $runTime = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
             }
         }
 
-        Write-Log "-----------------------------------"
+	$runTime = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+	Write-Host "---------- Script finished at: $runTime ----------"
     }
 }
