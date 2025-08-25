@@ -27,6 +27,9 @@ $serverName = $env:COMPUTERNAME
 Write-Host "Collecting SMB share info from server: $serverName"
 Write-Log  "Server Name: $serverName"
 
+Write-Log "---------- Disk capacity usage ----------"
+Get-PSDrive -PSProvider FileSystem	
+
 # Check if required module is loaded
 if (-not (Get-Module -Name SmbShare)) {
     Write-Log "Required module (SmbShare) is not available. Please ensure it is installed."

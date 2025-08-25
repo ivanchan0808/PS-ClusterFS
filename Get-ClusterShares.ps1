@@ -30,8 +30,12 @@ if (-not (Get-Module -Name FailoverClusters, SmbShare)) {
     exit
 }
 
+
+
 # Get the current cluster
 try {
+    Write-Log "---------- Disk capacity usage ----------"
+    Get-PSDrive -PSProvider FileSystem	
     Write-Log "---------- Executing command: Get-Cluster ----------"
     $cluster = Get-Cluster -ErrorAction Stop
     Write-Log "Cluster Name: $($cluster.Name)"
